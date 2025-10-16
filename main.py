@@ -10,8 +10,6 @@ from data.local.const import AvatarToTextArt
 from bot.token import get_bot_token, prefix
 from imports.log_imports import logger
 from imports.discord_imports import *
-from utils.cogs.ticket import setup_persistent_views
-from utils.cogs.fun import setup_persistent_views_fun
 from art import text2art
 from bot.token import get_bot_token as ut
 
@@ -127,8 +125,7 @@ class ClusteredBot(commands.AutoShardedBot):
                 type=discord.ActivityType.listening,
                 name=f"@{self.user.name} help"
             ))
-        await setup_persistent_views_fun(self)
-        await setup_persistent_views(self)
+
         for guild in self.guilds:
             await self._configure_server_shards(guild)
 

@@ -122,7 +122,7 @@ class TutorialMission:
                 message_emojis = re.findall(
                     r"<:[\w~]+:(\d+)>", message.content)
                 message_emoji_names = [
-                    str(discord.utils.get(self.bot.emojis, id=int(emoji_id)))
+                    str(discordbot.utils.get(self.bot.emojis, id=int(emoji_id)))
                     for emoji_id in message_emojis
                 ]
 
@@ -284,9 +284,9 @@ class Quest_Prompt:
     @staticmethod
     async def get_embed(bot):
         
-        fair_emoji = discord.utils.get(bot.emojis, id=1244196046565802015)
-        tracking_emoji = discord.utils.get(bot.emojis, id=1244195699331960863)
-        respect_emoji = discord.utils.get(bot.emojis, id=1244196427828301825)
+        fair_emoji = discordbot.utils.get(bot.emojis, id=1244196046565802015)
+        tracking_emoji = discordbot.utils.get(bot.emojis, id=1244195699331960863)
+        respect_emoji = discordbot.utils.get(bot.emojis, id=1244196427828301825)
 
         embed = discord.Embed(
             description=(
@@ -328,7 +328,7 @@ class Quest_Progress:
         bar = ""
         for i in range(Quest_Progress.Progress_Bar_Length):
             front_emoji = (
-                discord.utils.get(
+                discordbot.utils.get(
                     bot.emojis,
                     id=Quest_Progress.Progress_Bar_MAPPING[
                         "front_full" if progress >= (
@@ -338,7 +338,7 @@ class Quest_Progress:
                 or ":_:"
             )
             mid_emoji = (
-                discord.utils.get(
+                discordbot.utils.get(
                     bot.emojis,
                     id=Quest_Progress.Progress_Bar_MAPPING[
                         "mid_full" if progress >= (
@@ -349,7 +349,7 @@ class Quest_Progress:
             )
             bar += f"{front_emoji}{mid_emoji}" if i == 0 else f"{mid_emoji}"
         back_emoji = (
-            discord.utils.get(
+            discordbot.utils.get(
                 bot.emojis,
                 id=Quest_Progress.Progress_Bar_MAPPING[
                     "back_full" if progress == 1 else "back_empty"
@@ -385,7 +385,7 @@ class QuestEmbed:
         )
 
         
-        added_emoji = discord.utils.get(bot.emojis, id=1244440519514521600)
+        added_emoji = discordbot.utils.get(bot.emojis, id=1244440519514521600)
 
         
         embed = discord.Embed(
@@ -407,7 +407,7 @@ class QuestEmbed:
     @staticmethod
     async def get_agree_confirmation_embed(bot, user, prefix):
         check_emoji_id = 1243403342722371645
-        check_emoji = discord.utils.get(bot.emojis, id=check_emoji_id)
+        check_emoji = discordbot.utils.get(bot.emojis, id=check_emoji_id)
 
         confirmation_embed = discord.Embed(
             title=f"{check_emoji} Confirmation Complete",
@@ -442,7 +442,7 @@ class QuestEmbed:
 
     @staticmethod
     async def show_quest(bot, ctx):
-        help_emoji = discord.utils.get(bot.emojis, id=1245611790176616510)
+        help_emoji = discordbot.utils.get(bot.emojis, id=1245611790176616510)
 
         embed = discord.Embed(
             
@@ -475,8 +475,8 @@ class Quest_Completed_Embed:
             "check_emoji_id": 1243403342722371645,
             "reward_emoji_id": 1247800150479339581,
         }
-        check_emoji = discord.utils.get(bot.emojis, id=inner_dirs["check_emoji_id"])
-        reward_emoji = discord.utils.get(bot.emojis, id=inner_dirs["reward_emoji_id"])
+        check_emoji = discordbot.utils.get(bot.emojis, id=inner_dirs["check_emoji_id"])
+        reward_emoji = discordbot.utils.get(bot.emojis, id=inner_dirs["reward_emoji_id"])
 
         # Quest text
         amount = "times" if times > 1 else "time"
@@ -750,8 +750,8 @@ bot_config = {
         "token_key": "Test_Token"
     },
     False: { 
-        "prefix": ".",
-        "token_key": "Token"
+        "prefix": ",",
+        "token_key": "Poketwo_Helper"
     }
 }
 

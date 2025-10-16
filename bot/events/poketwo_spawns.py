@@ -18,9 +18,9 @@ import requests
 from imports.discord_imports import *
 from bot.token import use_test_bot as ut
 from bot.cogs.pokemon import PoketwoCommands
-from utils.subcogs.pokemon import MongoHelper
+from bot.utils.mongo import *
 from submodules.poketwo_autonamer.predict import Prediction
-from utils.events.poketwo_spawns import PokemonImageBuilder, PokemonUtils, PokemonSpawnView
+from bot.utils.events.poketwo_spawns import PokemonImageBuilder, PokemonUtils, PokemonSpawnView
 
 import resource
 import random
@@ -66,7 +66,7 @@ class PoketwoSpawnDetector(commands.Cog):
         self.predictor = Prediction()  # Preload model
         self.pp = PoketwoCommands(bot)
         self.mongo = MongoHelper(AsyncIOMotorClient(os.getenv("MONGO_URI"))["Commands"]["pokemon"])
-        self.pokemon_utils = PokemonUtils(
+        self.pokemonutils = PokemonUtils(
             self.mongo,
             type_emojis_file="data/commands/pokemon/pokemon_emojis/_pokemon_types.json",
             quest_emojis_file="data/commands/pokemon/pokemon_emojis/_pokemon_quest.json",
@@ -80,9 +80,9 @@ class PoketwoSpawnDetector(commands.Cog):
             bot=bot,
             pp=self.pp,
         )
-        self.full_pokemon_data = self.pokemon_utils.load_full_pokemon_data()
+        self.full_pokemon_data = self.pokemonutils.load_full_pokemon_data()
         self.image_builder = PokemonImageBuilder()
-        self._pokemon_ids = self.pokemon_utils.load_pokemon_ids()
+        self._pokemon_ids = self.pokemonutils.load_pokemon_ids()
 
         # Caches: Use LRU for automatic size management
         self.pred_cache = lru_cache(maxsize=self.MAX_DYNAMIC_CACHE_SIZE)(self._predict_pokemon)
@@ -146,11 +146,11 @@ class PoketwoSpawnDetector(commands.Cog):
     def _preload_static_caches(self) -> None:
         for name in self._pokemon_ids:
             name_lower = name.lower()
-            desc_data = self.pokemon_utils.get_description(name_lower) or ("", "???")
+            desc_data = self.pokemonutils.get_description(name_lower) or ("", "???")
             self.desc_cache[name_lower] = desc_data
-            types = self.pokemon_utils.get_pokemon_types(name_lower)
+            types = self.pokemonutils.get_pokemon_types(name_lower)
             self.type_cache[name_lower] = types
-            alt = self.pokemon_utils.get_best_normal_alt_name(name_lower) or ""
+            alt = self.pokemonutils.get_best_normal_alt_name(name_lower) or ""
             self.alt_cache[name_lower] = alt
 
     def _load_image_urls(self) -> None:
@@ -231,9 +231,9 @@ class PoketwoSpawnDetector(commands.Cog):
         key = (sid, base_name)
         if key not in self.ping_cache:
             shiny_collect, type_pings, quest_pings = await asyncio.gather(
-                self.pokemon_utils.get_ping_users(message.guild, base_name),
-                self.pokemon_utils.get_type_ping_users(message.guild, base_name),
-                self.pokemon_utils.get_quest_ping_users(message.guild, base_name),
+                self.pokemonutils.get_ping_users(message.guild, base_name),
+                self.pokemonutils.get_type_ping_users(message.guild, base_name),
+                self.pokemonutils.get_quest_ping_users(message.guild, base_name),
             )
             self.ping_cache[key] = (shiny_collect, type_pings, quest_pings)
             if len(self.ping_cache) > self.MAX_PING_CACHE_SIZE:
@@ -243,10 +243,10 @@ class PoketwoSpawnDetector(commands.Cog):
 
         shiny_pings, collect_pings = shiny_collect
 
-        rare, regional = getattr(self.pokemon_utils, "_special_names", ([], []))
+        rare, regional = getattr(self.pokemonutils, "_special_names", ([], []))
         special_roles = self._get_special_roles(server_config, base_name, rare, regional)
 
-        ping_msg, _ = await self.pokemon_utils.format_messages(
+        ping_msg, _ = await self.pokemonutils.format_messages(
             raw_name, type_pings, quest_pings, shiny_pings, collect_pings,
             " ".join(special_roles), f"{conf_float:.2f}%", dex, desc,
             image_url, low_conf
@@ -255,7 +255,7 @@ class PoketwoSpawnDetector(commands.Cog):
         view = PokemonSpawnView(
             slug=base_name,
             pokemon_data=self.full_pokemon_data,
-            pokemon_utils=self.pokemon_utils
+            pokemonutils=self.pokemonutils
         )
 
         image_start = time.time()
@@ -365,9 +365,9 @@ class PoketwoSpawnDetector(commands.Cog):
             return self.predictor.predict(image_url)
 
     def _get_base_name(self, raw_name: str) -> str:
-        base = self.pokemon_utils.get_base_pokemon_name(raw_name)
+        base = self.pokemonutils.get_base_pokemon_name(raw_name)
         if base not in self._pokemon_ids:
-            full = self.pokemon_utils.find_full_name_for_slug(raw_name)
+            full = self.pokemonutils.find_full_name_for_slug(raw_name)
             if full:
                 base = full.lower().replace("_", "-")
         return base
@@ -376,7 +376,7 @@ class PoketwoSpawnDetector(commands.Cog):
         if sid in self.server_config_cache:
             self.server_config_cache.move_to_end(sid)
             return self.server_config_cache[sid]
-        config = await self.pokemon_utils.get_server_config(sid)
+        config = await self.pokemonutils.get_server_config(sid)
         self.server_config_cache[sid] = config or {}
         if len(self.server_config_cache) > self.MAX_DYNAMIC_CACHE_SIZE:
             self.server_config_cache.popitem(last=False)
@@ -417,7 +417,7 @@ class PoketwoSpawnDetector(commands.Cog):
         temp_path = self._get_temp_path(base_name, ext)
         alt = self.alt_cache.get(base_name.lower()) or ""
         types = self.type_cache.get(base_name.lower()) or []
-        name = self.pokemon_utils.format_name(base_name).replace("_", " ").title()
+        name = self.pokemonutils.format_name(base_name).replace("_", " ").title()
 
         try:
             await self.bot.loop.run_in_executor(
@@ -539,7 +539,7 @@ class PoketwoSpawnDetector(commands.Cog):
         await ctx.defer()
         try:
             import csv
-            async with aiofiles.open(self.pokemon_utils.description_file, "r", encoding="utf-8") as f:
+            async with aiofiles.open(self.pokemonutils.description_file, "r", encoding="utf-8") as f:
                 data = await f.read()
             reader = list(csv.DictReader(data.splitlines()))
             work_items = [

@@ -8,7 +8,7 @@ import discord
 from motor.motor_asyncio import AsyncIOMotorClient
 
 from imports.discord_imports import *
-from utils.subcogs.utils.mongo import MongoHelper
+from bot.utils.mongo import *
 
 
 class StarboardConfig:
@@ -145,7 +145,7 @@ class StarboardProcessor:
             username = match.group(2)
             if username:
                 username_lower = username.lower()
-                user = discord.utils.find(
+                user = discordbot.utils.find(
                     lambda m: m.name.lower() == username_lower or m.display_name.lower() == username_lower,
                     message.guild.members,
                 )

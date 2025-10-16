@@ -121,7 +121,7 @@ class Permission(commands.Cog):
         permissions = discord.Permissions()
         for perm in missing_perms:
             setattr(permissions, perm, True)
-        return discord.utils.oauth_url(self.bot.user.id, permissions=permissions)
+        return discordbot.utils.oauth_url(self.bot.user.id, permissions=permissions)
 
 # ─── Cog Setup ──────────────────────────────────────────────────────────────
 def setup(bot):
