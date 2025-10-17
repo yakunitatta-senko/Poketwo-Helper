@@ -23,10 +23,10 @@ mongo_client = AsyncIOMotorClient(MONGO_URI)
 db = mongo_client["Commands"]["pokemon"]
 
 
+  
+ 
 
-
-
-class Anti_Thief(commands.Cog):
+class Anti_Thief(commands.Cog): 
     BOT_IDS = {874910942490677270, 1234247716243112100, 854233015475109888, 1250128097941000223, 1428155779403350159}
     IGNORE_CHANNEL_KEYWORD = 'incense'
 
