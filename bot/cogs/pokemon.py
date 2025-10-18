@@ -7,7 +7,6 @@ from imports.discord_imports import *
 from bot.utils.cogs.pokemon import *
 from bot.utils.mongo import *
 from bot.utils.cogs.poketwo_commands import *
-from bot.events.starboard import StarboardProcessor
 
 
 from data.local.const import error_custom_embed as err_embed, primary_color as p_color
@@ -80,10 +79,6 @@ class PoketwoCommands(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
-        
-        self.s = StarboardProcessor(
-            MongoHelper(AsyncIOMotorClient(os.getenv("MONGO_URI"))["Commands"]["pokemon"])
-        )
 
         # Collections
         self.shiny_collection = "shiny_hunt"
@@ -209,10 +204,6 @@ class PoketwoCommands(commands.Cog):
     async def hidden_collection_manage(self, ctx, *, args: str = "list"):
         await self.collection_manage(ctx, args=args)
 
-    @commands.command(name="starboard", aliases=["sb"], hidden=True)
-    async def hidden_starboard(self, ctx, channel: TextChannel):
-        await self.set_starboard(ctx, channel)
-
     @commands.command(name="special", hidden=True)
     async def hidden_special_ping(self, ctx, ping_type: str = None, role: discord.Role = None):
         await self.special_ping_legacy(ctx, ping_type, role)
@@ -303,19 +294,6 @@ class PoketwoCommands(commands.Cog):
         pokemon_names, _ = self.flag_parser.extract_pokemon_names_from_string(remaining, action)
         await self.collection_handler.handle_collection(ctx, self.collection_collection, action, pokemon=pokemon_names or None, flags_obj=flags_dict)
         
-    # -------------------
-    # Star Board
-    # -------------------
-    @pt.command(name="starboard", aliases=["sb"])
-    @commands.check(lambda ctx: any(r.name == "Anya Manager" for r in ctx.author.roles) or ctx.author.guild_permissions.manage_channels)
-    async def set_starboard(self, ctx, channel: TextChannel):
-        try:
-            await self.s.config_db.set_starboard_channel(ctx.guild.id, channel.id)
-            await ctx.reply(f"✅ Starboard channel set to {channel.mention}", mention_author=False)
-        except Exception as e:
-            print(f"[ERROR] set_starboard: {e}")
-            traceback.print_exc()
-            await ctx.send(f"⚠️ Error setting starboard: {e}")
 
     # -------------------
     # Special Ping (Legacy text command)
