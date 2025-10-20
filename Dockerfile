@@ -8,20 +8,22 @@ ENV PIP_DISABLE_PIP_VERSION_CHECK=1
 ENV LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.2
 ENV PATH="/root/.local/bin:${PATH}"
 
-# Install build deps (kept minimal; add more if you need to compile wheels)
+# Install build dependencies (kept minimal; add more if you need to compile wheels)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git curl build-essential libssl-dev libffi-dev python3-dev libjemalloc2 \
   && rm -rf /var/lib/apt/lists/*
 
 # Install Poetry (official installer) and configure to not create virtualenvs
-RUN curl -sSL https://install.python-poetry.org | python - --version 1.5.1 \
- && poetry config virtualenvs.create false
+RUN curl -sSL https://install.python-poetry.org | python3 - --version 1.5.1 \
+  && poetry --version \
+  && poetry config virtualenvs.create false
 
 # Copy Poetry project files
 COPY pyproject.toml poetry.lock* ./
 
-# Try to export requirements; fall back to install+pip freeze if export isn't available
-RUN bash -lc "poetry export -f requirements.txt --without-hashes -o requirements.txt || (poetry install --no-root --only main && pip freeze > requirements.txt)"
+# Export requirements; fall back to install+pip freeze if export fails
+RUN poetry export -f requirements.txt --without-hashes -o requirements.txt || \
+    (poetry install --no-root --only main && pip freeze > requirements.txt)
 
 # =========================
 # Stage 2: Runtime
@@ -48,4 +50,4 @@ COPY . .
 RUN echo "3.12" > .python-version
 
 # Run setup script before app launch
-CMD ["bash", "-c", "python data/setup.py && python main.py"]
+CMD ["bash", "-c", "python3 data/setup.py && python main.py"]
