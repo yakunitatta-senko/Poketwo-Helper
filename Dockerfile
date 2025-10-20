@@ -5,25 +5,26 @@ FROM python:3.12-slim AS builder
 WORKDIR /app
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install build dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends git libjemalloc2 \
+# Install build deps
+RUN apt-get update && apt-get install -y --no-install-recommends git libjemalloc2 curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Use jemalloc for better memory efficiency
 ENV LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.2
 
-# Install Poetry (no venv)
-RUN pip install --no-cache-dir poetry && poetry config virtualenvs.create false
+# Install latest Poetry
+RUN pip install --no-cache-dir "poetry>=1.5.0"
 
 # Copy project metadata
 COPY pyproject.toml poetry.lock* ./
 
-# Export dependencies to requirements.txt
-RUN poetry export -f requirements.txt --without-hashes -o requirements.txt
+# Install dependencies directly (no export step)
+RUN poetry config virtualenvs.create false \
+    && poetry install --no-root --no-interaction --no-ansi
 
-# Optional: copy setup script if present
+# Optional setup
 COPY data/setup.py data/setup.py
-RUN if [ -f data/setup.py ]; then python data/setup.py; fi
+RUN [ -f data/setup.py ] && python data/setup.py || true
 
 # =========================
 # Stage 2: Final image
@@ -32,19 +33,19 @@ FROM python:3.12-slim
 WORKDIR /app
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install runtime dependencies
+# Install runtime deps
 RUN apt-get update && apt-get install -y --no-install-recommends libjemalloc2 \
     && rm -rf /var/lib/apt/lists/*
 
 # Use jemalloc
 ENV LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.2
 
-# Copy requirements and install
-COPY --from=builder /app/requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Copy environment from builder
+COPY --from=builder /usr/local/lib/python3.12 /usr/local/lib/python3.12
+COPY --from=builder /usr/local/bin /usr/local/bin
 
-# Copy application code (exclude large dev files if any)
+# Copy app code
 COPY . .
 
-# Load env variables at runtime (docker-compose injects .env)
+# Run application
 CMD ["python", "main.py"]
