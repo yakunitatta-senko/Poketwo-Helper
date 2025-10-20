@@ -5,32 +5,38 @@ FROM python:3.12-slim AS builder
 WORKDIR /app
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install build dependencies
+# Install minimal build dependencies
 RUN echo "deb http://deb.debian.org/debian stable main contrib non-free" > /etc/apt/sources.list && \
     apt-get update && \
-    apt-get install -y --no-install-recommends git libjemalloc2 && \
+    apt-get install -y --no-install-recommends \
+        git \
+        libjemalloc2 \
+        build-essential && \
     rm -rf /var/lib/apt/lists/*
 
 # Use jemalloc for better memory efficiency
 ENV LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.2
 
-# Install Poetry (no venv)
+# Install Poetry globally (no cache, no venv)
 RUN pip install --no-cache-dir poetry && \
-    poetry config virtualenvs.create false && \
-    poetry --version
+    poetry config virtualenvs.create false
 
-# Copy source
-COPY . .
+# Copy only dependency files first (better cache)
+COPY pyproject.toml poetry.lock* ./
 
-# Run setup script (if present)
-RUN if [ -f data/setup.py ]; then python data/setup.py; fi
-
-# Install dependencies via Poetry
+# Install dependencies first
 RUN if [ -f pyproject.toml ]; then \
         poetry install --no-root --no-interaction --no-ansi; \
-    else \
-        echo "No pyproject.toml found, skipping Poetry install"; \
     fi
+
+# Copy full source after dependencies
+COPY . .
+
+# Optional setup script
+RUN if [ -f data/setup.py ]; then python data/setup.py; fi
+
+# Remove build artifacts to slim down
+RUN rm -rf /root/.cache /tmp/* /var/tmp/*
 
 # =========================
 # Stage 2: Final image
@@ -39,19 +45,21 @@ FROM python:3.12-slim
 WORKDIR /app
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install runtime dependencies
+# Install only runtime libraries
 RUN echo "deb http://deb.debian.org/debian stable main contrib non-free" > /etc/apt/sources.list && \
     apt-get update && \
     apt-get install -y --no-install-recommends libjemalloc2 && \
-    rm -rf /var/lib/apt/lists/*
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-# Use jemalloc
+# Memory optimization
 ENV LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.2
 
-# Copy app from builder
+# Copy Python runtime and app from builder
 COPY --from=builder /usr/local /usr/local
 COPY --from=builder /app /app
 
-# Load env variables at runtime (not build time)
-# The .env file will be injected using docker-compose
+# Clean up unnecessary folders (extra safety)
+RUN rm -rf /app/tests /app/docs /app/.git /app/.github || true
+
+# Final command
 CMD ["python", "main.py"]

@@ -1,18 +1,40 @@
+# =========================
+# Project & Config Files
+# =========================
 Dockerfile
-.env
-.vscode/
-.github/
-# Ignore large and unnecessary files
 .git
 .gitignore
+.github/
+.vscode/
+.idea/
+.env
+
+# =========================
+# Python Build Artifacts
+# =========================
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
 *.db
-*.log
 *.sqlite3
-*.csv
+*.mypy_cache/
+*.pytest_cache/
+.cache/
+build/
+dist/
+env/
+.venv/
+
+# =========================
+# Logs & Temporary Files
+# =========================
+*.log
+*.tmp
+
+# =========================
+# Large or Unneeded Assets
+# =========================
 *.mp4
 *.png
 *.jpg
@@ -22,15 +44,11 @@ __pycache__/
 *.zip
 *.tar
 *.tar.gz
-*.ipynb_checkpoints
+*.csv
+
+# =========================
+# Development Folders
+# =========================
 node_modules/
-.env
-.venv/
-env/
-build/
-dist/
-.cache/
-.mypy_cache/
-.pytest_cache/
-.idea/
-.vscode/
+data/
+tests/
