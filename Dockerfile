@@ -5,70 +5,53 @@ FROM python:3.12-slim AS builder
 WORKDIR /app
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install build tools and git
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends git build-essential libjemalloc2 && \
+# Install build dependencies
+RUN echo "deb http://deb.debian.org/debian stable main contrib non-free" > /etc/apt/sources.list && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends git libjemalloc2 && \
     rm -rf /var/lib/apt/lists/*
 
+# Use jemalloc for better memory efficiency
 ENV LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.2
 
-# Copy dependency files first
-COPY pyproject.toml poetry.lock* requirements.txt* ./
-
-# Install Poetry globally
+# Install Poetry (no venv)
 RUN pip install --no-cache-dir poetry && \
-    poetry config virtualenvs.create false
+    poetry config virtualenvs.create false && \
+    poetry --version
 
-# Install dependencies
-RUN if [ -f pyproject.toml ]; then \
-        poetry install --no-root --no-interaction --no-ansi; \
-    elif [ -f requirements.txt ]; then \
-        pip install --no-cache-dir -r requirements.txt; \
-    else \
-        echo "⚠️ No dependency files found"; \
-    fi
-
-# Copy all source code
+# Copy source
 COPY . .
 
-# Ensure package structure
-RUN find . -type d -exec sh -c 'touch "$1/__init__.py"' _ {} \;
-
-# Optional setup
+# Run setup script (if present)
 RUN if [ -f data/setup.py ]; then python data/setup.py; fi
 
-# Clean caches
-RUN rm -rf /root/.cache /tmp/* /var/tmp/*
+# Install dependencies via Poetry
+RUN if [ -f pyproject.toml ]; then \
+        poetry install --no-root --no-interaction --no-ansi; \
+    else \
+        echo "No pyproject.toml found, skipping Poetry install"; \
+    fi
 
 # =========================
-# Stage 2: Runtime
+# Stage 2: Final image
 # =========================
 FROM python:3.12-slim
 WORKDIR /app
 ENV DEBIAN_FRONTEND=noninteractive
-ENV PYTHONPATH=/app
-ENV LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.2
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONUNBUFFERED=1
 
-# Runtime dependencies
-RUN apt-get update && \
+# Install runtime dependencies
+RUN echo "deb http://deb.debian.org/debian stable main contrib non-free" > /etc/apt/sources.list && \
+    apt-get update && \
     apt-get install -y --no-install-recommends libjemalloc2 && \
-    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+    rm -rf /var/lib/apt/lists/*
 
-# Copy from builder
+# Use jemalloc
+ENV LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.2
+
+# Copy app from builder
 COPY --from=builder /usr/local /usr/local
 COPY --from=builder /app /app
 
-# Ensure __init__.py exists in runtime
-RUN find /app -type d -exec sh -c 'touch "$1/__init__.py"' _ {} \;
-
-# Cleanup unnecessary files
-RUN rm -rf /app/tests /app/docs /app/.git /app/.github /app/__pycache__ || true
-
-# Run as non-root for security
-RUN useradd -m appuser && chown -R appuser /app
-USER appuser
-
-# Entrypoint
-CMD ["python3", "main.py"]
+# Load env variables at runtime (not build time)
+# The .env file will be injected using docker-compose
+CMD ["python", "main.py"]
