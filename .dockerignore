@@ -7,7 +7,6 @@ Dockerfile
 .github/
 .vscode/
 .idea/
-.env
 
 # =========================
 # Python Build Artifacts
@@ -36,19 +35,13 @@ env/
 # Large or Unneeded Assets
 # =========================
 *.mp4
-*.png
-*.jpg
-*.jpeg
-*.gif
-*.webp
 *.zip
 *.tar
 *.tar.gz
-*.csv
 
 # =========================
 # Development Folders
 # =========================
 node_modules/
-data/
 tests/
+docs/
