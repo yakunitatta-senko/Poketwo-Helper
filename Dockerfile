@@ -4,47 +4,46 @@
 FROM python:3.12-slim AS builder
 WORKDIR /app
 ENV DEBIAN_FRONTEND=noninteractive
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1
 
-# Install build dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends git libjemalloc2 \
-    && rm -rf /var/lib/apt/lists/*
+# Install build deps
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git curl libjemalloc2 && rm -rf /var/lib/apt/lists/*
 
-# Use jemalloc for better memory efficiency
+# Use jemalloc for memory efficiency
 ENV LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.2
 
-# Install Poetry (no venv)
+# Install Poetry without creating virtualenv
 RUN pip install --no-cache-dir poetry && poetry config virtualenvs.create false
 
-# Copy project metadata
+# Copy Poetry project files
 COPY pyproject.toml poetry.lock* ./
 
-# Export dependencies to requirements.txt
+# Export dependencies to requirements.txt for runtime install
 RUN poetry export -f requirements.txt --without-hashes -o requirements.txt
 
-# Optional: copy setup script if present
-COPY data/setup.py data/setup.py
-RUN if [ -f data/setup.py ]; then python data/setup.py; fi
-
 # =========================
-# Stage 2: Final image
+# Stage 2: Runtime
 # =========================
 FROM python:3.12-slim
 WORKDIR /app
 ENV DEBIAN_FRONTEND=noninteractive
-
-# Install runtime dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends libjemalloc2 \
-    && rm -rf /var/lib/apt/lists/*
-
-# Use jemalloc
+ENV PYTHONUNBUFFERED=1
 ENV LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.2
 
+# Install runtime libraries
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libjemalloc2 && rm -rf /var/lib/apt/lists/*
+
 # Copy requirements and install
-COPY --from=builder /app/requirements.txt .
+COPY --from=builder /app/requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application code (exclude large dev files if any)
+# Copy full application
 COPY . .
 
-# Load env variables at runtime (docker-compose injects .env)
-CMD ["python", "main.py"]
+# Define explicit Python version for buildpacks
+RUN echo "3.12" > .python-version
+
+# Run setup script before app launch
+CMD ["bash", "-c", "python data/setup.py && python main.py"]
