@@ -3,49 +3,42 @@
 # =========================
 FROM python:3.12-slim AS builder
 WORKDIR /app
-ENV DEBIAN_FRONTEND=noninteractive
+ENV DEBIAN_FRONTEND=noninteractive PIP_DISABLE_PIP_VERSION_CHECK=1
 
-# Install build deps
-RUN apt-get update && apt-get install -y --no-install-recommends git libjemalloc2 curl \
+# Install minimal build deps
+RUN apt-get update && apt-get install -y --no-install-recommends gcc git curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Use jemalloc for better memory efficiency
-ENV LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.2
-
-# Install latest Poetry
+# Install poetry (no cache)
 RUN pip install --no-cache-dir "poetry>=1.5.0"
 
-# Copy project metadata
+# Copy only dependency files first for layer caching
 COPY pyproject.toml poetry.lock* ./
 
-# Install dependencies directly (no export step)
+# Install dependencies without virtualenv or cache
 RUN poetry config virtualenvs.create false \
-    && poetry install --no-root --no-interaction --no-ansi
+ && poetry install --no-root --no-interaction --no-ansi --only main
 
-# Optional setup
+# Copy only setup script
 COPY data/setup.py data/setup.py
-RUN [ -f data/setup.py ] && python data/setup.py || true
+RUN python data/setup.py || true
 
 # =========================
-# Stage 2: Final image
+# Stage 2: Final runtime
 # =========================
 FROM python:3.12-slim
 WORKDIR /app
-ENV DEBIAN_FRONTEND=noninteractive
+ENV DEBIAN_FRONTEND=noninteractive LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.2
 
-# Install runtime deps
+# Install only runtime deps
 RUN apt-get update && apt-get install -y --no-install-recommends libjemalloc2 \
-    && rm -rf /var/lib/apt/lists/*
+ && rm -rf /var/lib/apt/lists/*
 
-# Use jemalloc
-ENV LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.2
-
-# Copy environment from builder
-COPY --from=builder /usr/local/lib/python3.12 /usr/local/lib/python3.12
+# Copy installed site-packages only (not entire /usr/local)
+COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
 COPY --from=builder /usr/local/bin /usr/local/bin
 
-# Copy app code
+# Copy application
 COPY . .
 
-# Run application
 CMD ["python", "main.py"]
