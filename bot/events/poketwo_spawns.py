@@ -18,7 +18,7 @@ import requests
 from imports.discord_imports import *
 from bot.token import use_test_bot as ut
 from bot.cogs.pokemon import PoketwoCommands
-from utils.mongo import *
+from bot.utils.mongo import *
 from submodules.poketwo_autonamer.predict import Prediction
 from bot.utils.events.poketwo_spawns import PokemonImageBuilder, PokemonUtils, PokemonSpawnView
 
