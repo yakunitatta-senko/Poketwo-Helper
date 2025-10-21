@@ -1269,6 +1269,11 @@ class ServerConfigView(discord.ui.View):
 
 
 
+
+
+
+
+
 class PokemonTypeSelect(discord.ui.View):
     def __init__(self, bot, user_id: int, collection_type: str, mongo_helper,
                  pokemon_types: list[str], current_types: list[str] | None = None, status=None):
@@ -1400,7 +1405,7 @@ class PokemonTypeSelect(discord.ui.View):
                     embed.set_thumbnail(url=user.avatar.url)
             else:
                 embed = discord.Embed(
-                    title="⚙️ Type Ping",
+                    title="⚙️ Type Ping Settings",
                     color=primary_color()  # Teal color
                 )
                 
@@ -1420,6 +1425,7 @@ class PokemonTypeSelect(discord.ui.View):
                         type_lines.append("\n".join(row_text))
                     
                     embed.description = f"\n".join(type_lines)
+
                     
                 else:
                     embed.description = "### No Types Selected\n" \
@@ -1740,7 +1746,7 @@ class PokemonRegionSelect(discord.ui.View):
             else:
                 embed = discord.Embed(
                     title="🌍 Region Ping Settings",
-                    color=0x4ECDC4
+                    color=primary_color()
                 )
                 if self.current_regions:
                     lines = []
@@ -1881,6 +1887,8 @@ class PokemonRegionSelect(discord.ui.View):
         parts = [p.strip().lower() for p in user_input.replace(',', ' ').split()]
         return {r for r in parts if r in valid_regions and r != "hisui"}
 
+     
+     
      
      
      
